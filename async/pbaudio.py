@@ -6,11 +6,12 @@
 from vs1053 import *
 from machine import SPI, Pin
 import uasyncio as asyncio
+from pyb import LED
 
 # 128K conversion
 # ffmpeg -i yellow.flac -acodec libmp3lame -ab 128k yellow.mp3
 # VBR conversion
-# ffmpeg -i yellow.flac -acodec libmp3lame -qscale:a 0 yellow.mp3
+# ffmpeg -i yellow.flac -acodec libmp3lame -qscale:a 0 yellow_v.mp3
 # Yeah, I know. I like Coldplay...
 
 spi = SPI(2)  # 2 MOSI Y8 MISO Y7 SCK Y6
@@ -21,7 +22,14 @@ xdcs = Pin('Y2', Pin.OUT, value=1)  # Data chip select xdcs in datasheet
 dreq = Pin('Y1', Pin.IN)  # Active high data request
 player = VS1053(spi, reset, dreq, xdcs, xcs, sdcs, '/fc')
 
+async def heartbeat():
+    led = LED(1)
+    while True:
+        led.toggle()
+        await asyncio.sleep_ms(300)
+
 async def main():
+    asyncio.create_task(heartbeat())
     player.volume(-10, -10)  # -10dB (0dB is loudest)
     locn = '/fc/'
     fmt = 'pins {} byte rate {} decode time {}s'
@@ -42,5 +50,6 @@ async def main():
         await player.play(f)
     with open(locn + 'panic.mp3', 'rb') as f:
         await player.play(f)
+    print('All done.')
 
 asyncio.run(main())

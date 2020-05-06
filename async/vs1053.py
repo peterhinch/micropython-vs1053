@@ -10,7 +10,8 @@ import time
 import io
 import uasyncio as asyncio
 
-__version__ = (0, 1, 0)
+# V0.1.1 Bugfix: SPI baudrate was wrong during reset.
+__version__ = (0, 1, 1)
 
 # Before setting, the internal clock runs at 12.288MHz. Data P7: "the
 # maximum speed for SCI reads is CLKI/7" hence max initial baudrate is
@@ -18,7 +19,7 @@ __version__ = (0, 1, 0)
 _INITIAL_BAUDRATE = const(1_000_000)
 # 12.288*3.5/4 = 10MHz for data read (using _SCI_CLOCKF,0x8800)
 _DATA_BAUDRATE = const(10_752_000)  # Speed for data transfers. On Pyboard D
-# actual rate is 4.5MHz shared with SD card - sdcard.py uses 1.32MHz.
+# actual rate is 9MHz shared with SD card - sdcard.py uses 1.32MHz.
 _SCI_BAUDRATE = const(5_000_000)
 
 # SCI Registers
@@ -86,6 +87,7 @@ class VS1053(io.IOBase):
         self._xcs = xcs  # Register CS
         self._spi = spi
         self._cbuf = bytearray(4)  # Command buffer
+        self._slow_spi = True
         self.reset()
         if ((sdcs is not None) and (mp is not None)):
             import sdcard
@@ -106,7 +108,7 @@ class VS1053(io.IOBase):
 
     def _write_reg(self, addr, value):  # Datasheet 7.4
         self._wait_ready()
-        self._spi.init(baudrate=_SCI_BAUDRATE)
+        self._spi.init(baudrate = _INITIAL_BAUDRATE if self._slow_spi else _SCI_BAUDRATE)
         b = self._cbuf
         b[0] = 2  # WRITE
         b[1] = addr & 0xff
@@ -119,7 +121,7 @@ class VS1053(io.IOBase):
 
     def _read_reg(self, addr):  # Datasheet 7.4
         self._wait_ready()
-        self._spi.init(baudrate=_SCI_BAUDRATE)
+        self._spi.init(baudrate = _INITIAL_BAUDRATE if self._slow_spi else _SCI_BAUDRATE)
         b = self._cbuf
         b[0] = 3  # READ
         b[1] = addr & 0xff
@@ -145,15 +147,11 @@ class VS1053(io.IOBase):
         efb = self._read_ram(_END_FILL_BYTE) & 0xff
         for n in range(len(buf)):
             buf[n] = efb
-        for n in range(65):  # send 2080 bytes of end fill byte
+        for _ in range(65):  # send 2080 bytes of end fill byte
             await sw.awrite(buf)
-            if n & 7 == 0:
-                await asyncio.sleep_ms(0)
         self.mode_set(_SM_CANCEL)
-        for n in range(64):  # send up to 2048 bytes
+        for _ in range(64):  # send up to 2048 bytes
             await sw.awrite(buf)
-            if n & 7 == 0:
-                await asyncio.sleep_ms(0)
             if not self.mode() & _SM_CANCEL:
                 break
         else:  # Cancel has not been acknowledged
@@ -192,12 +190,10 @@ class VS1053(io.IOBase):
         self.soft_reset()
 
     def soft_reset(self):
-        self._spi.init(baudrate=_INITIAL_BAUDRATE)
+        self._slow_spi = True  # Use _INITIAL_BAUDRATE
         self.mode_set(_SM_RESET)
         # This has many interesting settings data P39
         time.sleep_ms(20)  # Adafruit have a total of 200ms
-        while not self._dreq():
-            pass
         # Data P42. P7 footnote 4 recommends xtal * 3.5 + 1: using that.
         self._write_reg(_SCI_CLOCKF, 0x8800)
         if self._read_reg(_SCI_CLOCKF) != 0x8800:
@@ -206,8 +202,8 @@ class VS1053(io.IOBase):
         # Datasheet suggests writing to SPI_BASS. 
         self._write_reg(_SCI_BASS, 0)  # 0 is flat response
         self.volume(0, 0)
-        while not self._dreq():
-            pass
+        self._wait_ready()
+        self._slow_spi = False
 
     # Range is 0 to -63.5 dB
     def volume(self, left, right, powerdown=False):
@@ -274,7 +270,7 @@ class VS1053(io.IOBase):
             while self._cancnt:  # In progress
                 await asyncio.sleep_ms(50)
 
-    async def play(self, s, buf = bytearray(32)):
+    async def play(self, s, buf=bytearray(32)):
         self._playing = True
         self._cancnt = 0
         cnt = 0
@@ -292,8 +288,6 @@ class VS1053(io.IOBase):
                         buf[n] = efb
                     for n in range(64):  # send 2048 bytes of end fill byte
                         await sw.awrite(buf)
-                        if n & 7 == 0:
-                            await asyncio.sleep_ms(0)
                     await sw.awrite(buf[:4])  # Take to 2052 bytes
                     if self._read_reg(_SCI_HDAT0) or self._read_reg(_SCI_HDAT1):
                         raise RuntimeError('Invalid HDAT value.')
