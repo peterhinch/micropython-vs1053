@@ -5,13 +5,17 @@
 # Driver is based on the following sources
 # Adafruit https://github.com/adafruit/Adafruit_CircuitPython_VS1053
 # Uri Shaked https://github.com/urish/vs1053-circuitpython
+# https://bois083.wordpress.com/2014/11/11/playing-flac-files-using-vs1053-audio-decoder-chip/
+# http://www.vlsi.fi/fileadmin/software/VS10XX/vs1053b-peq.pdf
 
 import time
+import os
 import io
 import uasyncio as asyncio
 
+# V0.1.2 Add patch facility
 # V0.1.1 Bugfix: SPI baudrate was wrong during reset.
-__version__ = (0, 1, 1)
+__version__ = (0, 1, 2)
 
 # Before setting, the internal clock runs at 12.288MHz. Data P7: "the
 # maximum speed for SCI reads is CLKI/7" hence max initial baudrate is
@@ -159,6 +163,28 @@ class VS1053(io.IOBase):
             return
         if self._read_reg(_SCI_HDAT0) or self._read_reg(_SCI_HDAT1):
             raise RuntimeError('Invalid HDAT value.')
+
+    def _patch_stream(self, s):
+        def read_word(s, buf=bytearray(2)):
+            if s.readinto(buf) != 2:
+                raise RuntimeError('Invalid file')
+            return (buf[1] << 8) + buf[0]
+
+        while True:
+            try:
+                addr = read_word(s)
+            except RuntimeError:  # Normal EOF
+                break
+            count = read_word(s)
+            if (count & 0x8000):  # RLE run, replicate n samples
+                count &= 0x7fff
+                val = read_word(s)
+                for _ in range(count):
+                    self._write_reg(addr, val)
+            else:  # Copy run, copy n samples
+                for _ in range(count):
+                    val = read_word(s)
+                    self._write_reg(addr, val)
 
     # IOBase interface
     # Called via .play with a buffer of 32 bytes max. The VS1053
@@ -313,3 +339,20 @@ class VS1053(io.IOBase):
         await asyncio.sleep(seconds)
         await sw.awrite(b'\x45\x78\x69\x74\0\0\0\0')
         self.mode_clear(_SM_TESTS)
+
+    # Given a directory apply any patch files found. Applied in alphabetical
+    # order.
+    def patch(self, loc=None):
+        if loc is None:
+            mp = self._mp
+            if mp is None:
+                raise ValueError('No patch location')
+            loc = ''.join((mp, 'plugins')) if mp.endswith('/') else ''.join((mp, '/plugins'))
+        elif loc.endswith('/'):
+            loc = loc[:-1]
+        for f in sorted(os.listdir(loc)):
+            f = ''.join((loc, '/', f))
+            print('Patching', f)
+            with open(f, 'rb') as s:
+                self._patch_stream(s)
+        print('Patching complete.')

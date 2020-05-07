@@ -43,13 +43,14 @@ Copy the following files from the `synchronous` directory to the target
 filesystem:
  * `vs1053_syn.py` The driver
  * `sdcard.py` SD card driver. See below.
-Optional test scripts:
+Optional test scripts (these differ in pin numbering):
  * `pbaudio_syn.py` For Pyboards.
  * `esp8266_audio.py` For ESP8266.
+ * `esp32_audio.py` ESP32.
 
 The test script will need to be adapted to reflect your MP3 files. It assumes
-files stored on an SD card in the board's socket. They can be adapted for files
-stored elsewhere. This has been tested with MP3's on the Pyboard SD card.
+files stored on an SD card in the board's socket. Adapt scripts for files
+stored elsewhere - this has been tested with MP3's on the Pyboard SD card.
 
 The SD card driver is provided because the official version currently has
 [a bug](https://github.com/micropython/micropython/pull/6007).
@@ -134,6 +135,12 @@ Optional args - supply only if an SD card is fitted:
  * `mode_clear` Arg `bits` Clear specific mode bits.
  * `reset` No arg. Issues a hardware reset to the VS1053 then `soft_reset`.
  * `soft_reset` No arg. Software reset of the VS1053.
+ * `patch` Optional arg `loc` a directory containing patch files for the chip.
+ The default directory is `/plugins` on the mounted flash card. Patch files are
+ installed in alphabetical order. Note this process can take many seconds on
+ some platforms.
+ Plugins may be found on the
+ [VLSI solutions](http://www.vlsi.fi/en/products/vs1053.html) site.
 
 ### 5.2.1 Setting the frequency response
 
@@ -209,8 +216,8 @@ slightly higher rate.
 The VS1053 can support lossles FLAC files with a plugin. However the data rate
 for FLAC files is about 1Mbps which would give an overhead of 222ms/s or 22.5%.
 This is the irreducibile overhead caused by bus transfers, and takes no account
-of the Python code. FLAC playback from the SD card may be impossible. The twice
-as bad WAV format is even more suspect.
+of the Python code. WAV files are typically twice as bad. In testing neither
+played on an ESP32.
 
 ## 6.2 Test results
 

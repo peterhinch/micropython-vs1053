@@ -15,6 +15,7 @@ import uasyncio as asyncio
 # VBR conversion
 # ffmpeg -i yellow.flac -acodec libmp3lame -qscale:a 0 yellow_v.mp3
 # Yeah, I know. I like Coldplay...
+
 spi = SPI(2, sck=Pin(18), mosi=Pin(23), miso=Pin(19))
 reset = Pin(32, Pin.OUT, value=1)  # Active low hardware reset
 xcs = Pin(33, Pin.OUT, value=1)  # Labelled CS on PCB, xcs on chip datasheet
@@ -22,11 +23,11 @@ sdcs = Pin(25, Pin.OUT, value=1)  # SD card CS
 xdcs = Pin(26, Pin.OUT, value=1)  # Data chip select xdcs in datasheet
 dreq = Pin(27, Pin.IN)  # Active high data request
 player = VS1053(spi, reset, dreq, xdcs, xcs, sdcs, '/fc')
+# player.patch()  # Optional. From /fc/plugins/
 
 def main():
     player.volume(-10, -10)  # -10dB (0dB is loudest)
     locn = '/fc/'
-    fmt = 'pins {} byte rate {} decode time {}s'
     # locn = '/sd/music/'
     # player.sine_test()  # Cattles volume
     # player.volume(-10, -10)  # -10dB (0dB is loudest)
