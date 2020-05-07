@@ -252,6 +252,8 @@ class VS1053:
 #        return self._read_ram(_POS_MS_LS) | (self._read_ram(_POS_MS_MS) << 16)
 
 
+    # Should check for short reads at EOF. Loop is time critical so I skip
+    # this check. Sending a few bytes of old data has no obvious consequence.
     def play(self, s, buf = bytearray(32)):
         cancb = self._cancb
         cancnt = 0

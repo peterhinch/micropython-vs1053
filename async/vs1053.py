@@ -270,6 +270,8 @@ class VS1053(io.IOBase):
             while self._cancnt:  # In progress
                 await asyncio.sleep_ms(50)
 
+    # Should check for short reads at EOF. Loop is time critical so I skip
+    # this check. Sending a few bytes of old data has no obvious consequence.
     async def play(self, s, buf=bytearray(32)):
         self._playing = True
         self._cancnt = 0

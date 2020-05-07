@@ -92,7 +92,8 @@ Optional args - supply only if an SD card is fitted:
  * `sdcs` A `Pin` instance defined as `Pin.OUT` with `value=1`.
  * `mp` A string defining the mount point (e.g. `/fc`).
  * `cancb` A callback normally returning `True`. If it returns `False` while an
- MP3 is playing, playback will be cancelled.
+ MP3 is playing, playback will be cancelled. The callback should return as fast
+ as possible: any delay is likely to affect playback.
 
 ## 5.2 Methods
 
