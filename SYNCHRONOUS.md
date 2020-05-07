@@ -5,6 +5,9 @@ driver: the `play` command will block for the duration of an MP3 file. It has
 been tested on an ESP8266 and ESP32. It will play 128Kbps and VBR MP3 files
 with the CPU running at stock frequency.
 
+CD quality audio may be achieved using FLAC files. Owing to the data rates a
+Pyboard host is required. The supplied plugin is necessary.
+
 # 2. Wiring
 
 Pin numbers and the SPI bus ID may be changed to suit different platforms. The
@@ -77,6 +80,17 @@ def main():
 
 main()
 ```
+## 4.1 FLAC files
+
+To play CD quality FLAC files, the supplied plugin must be installed. The
+simplest way is to copy the `plugins` directory and its contents to the compact
+flash card installed on the Adafruit board. Installation is then done by
+issuing `.patch()` after instantiation:
+```python
+player = VS1053(SPI(2), reset, dreq, xdcs, xcs, sdcs, '/fc')
+player.patch()
+```
+Because of performance limitations this requires a Pyboard host.
 
 # 5. VS1053 class
 
@@ -137,7 +151,7 @@ Optional args - supply only if an SD card is fitted:
  * `soft_reset` No arg. Software reset of the VS1053.
  * `patch` Optional arg `loc` a directory containing plugin files for the chip.
  The default directory is `/plugins` on the mounted flash card. Plugins are
- installed in alphabetical order. For some reason installing the Flac plugin
+ installed in alphabetical order. For some reason installing the FLAC plugin
  takes some 17s on ESP32 while being almost instant on a Pyboard. Plugins may
  be found on the
  [VLSI solutions](http://www.vlsi.fi/en/products/vs1053.html) site.
@@ -150,8 +164,9 @@ args. If no args are supplied, response will be set to flat.
  * `treble_freq` range 1000Hz to 15000Hz: lowest frequency of treble filter.
  * `bass_amp` range 0dB to +15dB. If zero, bass response will be flat.
  * `bass_freq` range 20Hz to 150Hz. Sets lower limit frequency. The datasheet
- section 9.6.3 suggests setting this to 1.5 times the lowest frequency  the
+ section 9.6.3 suggests setting this to 1.5 times the lowest frequency the
  audio system can reproduce.
+
 Out of range args will be constrained to in-range values.
 
 The datasheet states "The Bass Enhancer ... is a powerful bass boosting DSP
@@ -194,7 +209,7 @@ issues that may arise."
 # 6. Data rates
 
 The task of reading data and writing it to the VS1053 makes high demands on the
-host hardware to support the necssary throughput.
+host hardware to support the necessary throughput.
 
 ## 6.1 Theory
 
@@ -213,16 +228,19 @@ overhead of 222N ns/s. Consequently the overhead is 28.4ms/s or 2.8%. I have
 successfully tested MP3's having a 256Kbps rate and VBR files which have a
 slightly higher rate.
 
-The VS1053 can support lossles FLAC files with a plugin. However the data rate
+The VS1053 can support lossless FLAC files with a plugin. However the data rate
 for FLAC files is about 1Mbps which would give an overhead of 222ms/s or 22.5%.
-This is the irreducibile overhead caused by bus transfers, and takes no account
+This is the irreducible overhead caused by bus transfers, and takes no account
 of the Python code. WAV files are typically twice as bad. In testing neither
 played on an ESP32.
+
+FLAC files played correctly on a Pyboard. WAV files were not tested. There is
+no reason to use them as they may be converted to FLAC without loss of quality.
 
 ## 6.2 Test results
 
 Testing was done using the onboard SD card adaptor on the Adafruit board. Stock
-CPU frequency was used except where stated.
+CPU frequency was used.
 
 Pyboards, ESP8266 and ESP32 work with this driver with MP3 files recorded at up
-to 256Kbps and VBR.
+to 256Kbps and VBR. Pyboards also work with FLAC files (using the plugin).

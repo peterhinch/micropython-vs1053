@@ -136,7 +136,7 @@ Optional args - supply only if an SD card is fitted:
  * `soft_reset` No arg. Software reset of the VS1053.
  * `patch` Optional arg `loc` a directory containing plugin files for the chip.
  The default directory is `/plugins` on the mounted flash card. Plugins are
- installed in alphabetical order. For some reason installing the Flac plugin
+ installed in alphabetical order. For some reason installing the FLAC plugin
  takes some 17s on ESP32 while being almost instant on a Pyboard. Plugins may
  be found on the
  [VLSI solutions](http://www.vlsi.fi/en/products/vs1053.html) site.
@@ -149,8 +149,9 @@ args. If no args are supplied, response will be set to flat.
  * `treble_freq` range 1000Hz to 15000Hz: lowest frequency of treble filter.
  * `bass_amp` range 0dB to +15dB. If zero, bass response will be flat.
  * `bass_freq` range 20Hz to 150Hz. Sets lower limit frequency. The datasheet
- section 9.6.3 suggests setting this to 1.5 times the lowest frequency  the
+ section 9.6.3 suggests setting this to 1.5 times the lowest frequency the
  audio system can reproduce.
+
 Out of range args will be constrained to in-range values.
 
 The datasheet states "The Bass Enhancer ... is a powerful bass boosting DSP
@@ -193,7 +194,7 @@ issues that may arise."
 # 6. Data rates
 
 The task of reading data and writing it to the VS1053 makes high demands on the
-host hardware to support the necssary throughput. While the code is cross
+host hardware to support the necessary throughput. While the code is cross
 platform it only produces good audio on high performing hosts.
 
 ## 6.1 Theory
@@ -213,11 +214,11 @@ overhead of 222N ns/s. Consequently the overhead is 28.4ms/s or 2.8%. I have
 successfully tested MP3's having a 256Kbps rate and VBR files which have a
 slightly higher rate.
 
-The VS1053 can support lossles FLAC files with a plugin. However the data rate
+The VS1053 can support lossless FLAC files with a plugin. However the data rate
 for FLAC files is about 1Mbps which would give an overhead of 222ms/s or 22.5%.
-This is the irreducibile overhead caused by bus transfers, and takes no account
-of the Python code. FLAC playback from the SD card may be impossible. The twice
-as bad WAV format is even more suspect.
+This is the irreducible overhead caused by bus transfers, and takes no account
+of the Python code. FLAC playback proved impossible even on a Pyboard - the
+synchronous driver should be used.
 
 ## 6.2 Test results
 

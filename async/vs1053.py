@@ -89,6 +89,7 @@ class VS1053(io.IOBase):
         self._dreq = dreq  # Data request
         self._xdcs = xdcs  # Data CS
         self._xcs = xcs  # Register CS
+        self._mp = mp
         self._spi = spi
         self._cbuf = bytearray(4)  # Command buffer
         self._slow_spi = True
