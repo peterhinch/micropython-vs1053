@@ -5,13 +5,15 @@ made significant changes and enhancements some of which which you may wish to
 backport.
 
 These were my objectives:  
- * Use asynchronous methods where appropriate.
+ * Use asynchronous methods where appropriate [there is now a synchronous
+ version too].
  * Code in a cross-platform manner aiming for efficiency.
  * Check all code against the device data.
  * Remove CircuitPython dependencies.
  * Rename constants to match the datasheet.
  * Access SPI bus and pins directly rather than via CircuitPython arbitration.
  * Replace properties with methods in accordance with MicroPython practice.
+ * Support the on-board SD card.
  * Add functionality and make some methods more user friendly.
 
 In the following, `CP` refers to `adafruit_vs1053.py`.
@@ -19,9 +21,9 @@ In the following, `CP` refers to `adafruit_vs1053.py`.
 # Timing
 
 Timing and SPI bus rate are crucial. An asynchronous solution is at an inherent
-disadvantage owing to scheduling overheads: you may well achieve better results
-with a synchronous design. But be aware that mine does not deliver acceptable
-audio on ESPx platforms.
+disadvantage owing to scheduling overheads: you may prefer the synchronous
+design. The asynchronous version does not deliver acceptable audio on ESPx
+platforms, whereas the synchronous version does.
 
 # Baudrate and clock rate
 
@@ -61,7 +63,8 @@ runs at 6MHz, a Pyboard D at 9MHz, a Pyboard 1.x at 10.5MHz. There is a
 difference in the behaviour of hard SPI interfaces between Pyboards and the
 ESP8266. All Pyboards clock a buffer out at a constant rate. By contrast the
 ESP8266 issues a byte at the specified rate, interposing a 7μs gap between each
-byte. This (and probably other latencies) prevents successful operation.
+byte. This (and probably other latencies) prevents successful operation with
+the asynchronous driver.
 
 # sdcard.py
 
