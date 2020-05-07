@@ -3,7 +3,7 @@
 The VS1053b is an audio player capable of handling MP3 files. Development was
 done with this [Adafruit breakout](https://www.adafruit.com/product/1381). This
 includes an SD card adaptor which may be used to store MP3 files. MP3 bit rates
-up to 256Kbps and VBR files are supported.
+up to 256Kbps and VBR (variable bit rate) files are supported.
 
 It should be noted that these drivers run the adaptor board's SD card at a
 higher clock rate than the official SD card driver. If this slot is used, good
@@ -19,6 +19,7 @@ to run concurrently while playing audio files. Sadly the overhead of
 
 ### [Asynchronous driver docs](./ASYNC.md)
 
-The synchronous driver has been tested on ESP8266 and ESP32.
+The synchronous driver has been tested on ESP8266 and ESP32. On Pyboards CD
+quality audio may be achieved using FLAC files.
 
 ### [Synchronous driver docs](./SYNCHRONOUS.md)

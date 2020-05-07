@@ -11,13 +11,14 @@
 import time
 import os
 
-__version__ = (0, 1, 1)
+# V0.1.2 Add patch facility
+__version__ = (0, 1, 2)
 
 # Before setting, the internal clock runs at 12.288MHz. Data P7: "the
 # maximum speed for SCI reads is CLKI/7" hence max initial baudrate is
 # 12.288/7 = 1.75MHz
 _INITIAL_BAUDRATE = const(1_000_000)
-# 12.288*3.5/4 = 10MHz for data read (using _SCI_CLOCKF,0x8800)
+# 12.288*3.5/4 = 10.752MHz for data read (using _SCI_CLOCKF,0x8800)
 _DATA_BAUDRATE = const(10_752_000)  # Speed for data transfers. On Pyboard D
 # actual rate is 9MHz shared with SD card - sdcard.py uses 1.32MHz.
 _SCI_BAUDRATE = const(5_000_000)
@@ -30,7 +31,7 @@ _SCI_CLOCKF = const(0x3)
 _SCI_DECODE_TIME = const(0x4)
 # _SCI_AUDATA = const(0x5)
 _SCI_WRAM = const(0x6)
-_SCI_WRAMADDR= const(0x7)
+_SCI_WRAMADDR = const(0x7)
 _SCI_HDAT0 = const(0x8)
 _SCI_HDAT1 = const(0x9)
 # _SCI_AIADDR = const(0xa)
@@ -69,11 +70,6 @@ _IO_DIRECTION = const(0xc017)  # Datasheet 11.10
 _IO_READ = const(0xc018)
 _IO_WRITE = const(0xc019)
 
-# I/O
-# MP_STREAM_POLL_RD = const(1)
-MP_STREAM_POLL_WR = const(4)
-MP_STREAM_POLL = const(3)
-MP_STREAM_ERROR = const(-1)
 
 # xcs is chip XSS/
 # xdcs is chipXDCS/BSYNC/

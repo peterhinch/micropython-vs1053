@@ -21,7 +21,7 @@ __version__ = (0, 1, 2)
 # maximum speed for SCI reads is CLKI/7" hence max initial baudrate is
 # 12.288/7 = 1.75MHz
 _INITIAL_BAUDRATE = const(1_000_000)
-# 12.288*3.5/4 = 10MHz for data read (using _SCI_CLOCKF,0x8800)
+# 12.288*3.5/4 = 10.752MHz for data read (using _SCI_CLOCKF,0x8800)
 _DATA_BAUDRATE = const(10_752_000)  # Speed for data transfers. On Pyboard D
 # actual rate is 9MHz shared with SD card - sdcard.py uses 1.32MHz.
 _SCI_BAUDRATE = const(5_000_000)

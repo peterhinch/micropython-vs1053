@@ -134,11 +134,11 @@ Optional args - supply only if an SD card is fitted:
  * `mode_clear` Arg `bits` Clear specific mode bits.
  * `reset` No arg. Issues a hardware reset to the VS1053 then `soft_reset`.
  * `soft_reset` No arg. Software reset of the VS1053.
- * `patch` Optional arg `loc` a directory containing patch files for the chip.
- The default directory is `/plugins` on the mounted flash card. Patch files are
- installed in alphabetical order. Note this process can take many seconds on
- some platforms.
- Plugins may be found on the
+ * `patch` Optional arg `loc` a directory containing plugin files for the chip.
+ The default directory is `/plugins` on the mounted flash card. Plugins are
+ installed in alphabetical order. For some reason installing the Flac plugin
+ takes some 17s on ESP32 while being almost instant on a Pyboard. Plugins may
+ be found on the
  [VLSI solutions](http://www.vlsi.fi/en/products/vs1053.html) site.
 
 ### 5.3.1 Setting the frequency response
@@ -176,7 +176,7 @@ Do not set or clear arbitrary bits: only use the provided constants. These
 comprise:
  * `SM_EARSPEAKER_LO` EarSpeaker mode bits: see below.
  * `SM_EARSPEAKER_HI`
- * `SM_LAYER12` Enable MPEG layer 1 and 2 decode. Untested. Probably useless.
+ * `SM_LAYER12` Enable MPEG layer 1 and 2 decode. Untested.
  See [section 6](./ASYNC.md#6-data-rates).
  * `SM_DIFF` Inverts the left channel. Used for differential mono output.
  * `SM_LINE_IN` Line/microphone input. Input is currently unsupported.
