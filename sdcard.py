@@ -24,7 +24,7 @@ from micropython import const
 import time
 
 
-_CMD_TIMEOUT = const(100)
+_CMD_TIMEOUT = const(1000)  # PGH (was 100)
 
 _R1_IDLE_STATE = const(1 << 0)
 # R1_ERASE_RESET = const(1 << 1)

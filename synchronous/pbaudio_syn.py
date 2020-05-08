@@ -7,6 +7,7 @@ from vs1053_syn import *
 from machine import SPI, Pin
 from pyb import Switch  # For cancellation
 import time
+import os
 switch = Switch()
 
 # 128K conversion
@@ -26,7 +27,8 @@ player.patch()  # Optional. From /fc/plugins
 
 def main():
     player.volume(-10, -10)  # -10dB (0dB is loudest)
-    songs = ('road_to_hell.flac', 'yellow_v.mp3', 'panic.mp3')
+    # songs = ('road_to_hell.flac', 'yellow_v.mp3', 'panic.mp3')
+    songs = sorted([x for x in os.listdir('/fc') if x.endswith('.flac')])
     # locn = '/sd/music/'
     # player.sine_test()  # Cattles volume
     # player.volume(-10, -10)  # -10dB (0dB is loudest)

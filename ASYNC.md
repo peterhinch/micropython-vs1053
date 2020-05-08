@@ -43,7 +43,7 @@ The Adafruit adaptor may be powered from 5V or 3.3V.
 
 Copy the following files to the target filesystem:
  * `vs1053.py` The driver
- * `sdcard.py` SD card driver. See below.
+ * `sdcard.py` SD card driver (in root directory). See below.
 Optional test script:
  * `pbaudio.py` For Pyboards.
 
@@ -136,11 +136,8 @@ Optional args - supply only if an SD card is fitted:
  * `soft_reset` No arg. Software reset of the VS1053.
  * `patch` Optional arg `loc` a directory containing plugin files for the chip.
  The default directory is `/plugins` on the mounted flash card. Plugins are
- installed in alphabetical order. For some reason installing the FLAC plugin
- takes some 17s on ESP32 while being almost instant on a Pyboard. Plugins may
- be found on the
- [VLSI solutions](http://www.vlsi.fi/en/products/vs1053.html) site.
-
+ installed in alphabetical order. See [Plugins](./ASYNC.md#7-plugins).
+ 
 ### 5.3.1 Setting the frequency response
 
 The `response` synchronous method takes the following optional keyword only
@@ -259,3 +256,17 @@ round-robin scheduling. I am [lobbying](https://github.com/micropython/micropyth
 for an option to prioritise I/O, testing for readiness on every yield to the
 scheduler. If this is implemented it will reduce the constraints on vs1053
 application design.
+
+# 7. Plugins
+
+These binary files provide a means of installing enhancements and bug fixes on
+the VS1053. These are stored in RAM so need to be loaded after a power cycle.
+The only plugin I have tested is the FLAC plugin. The asynchronous driver is
+unable to use this successfully.
+
+The current FLAC driver `vs1053b-patches-flac.plg` does not work. An older
+version `flac_plugin.bin` is included which does.
+
+For some reason installing the FLAC plugin takes some 17s on ESP32 while being
+almost instant on a Pyboard. Plugins may be found on the
+[VLSI solutions](http://www.vlsi.fi/en/support/software/vs10xxpatches.html) site.
