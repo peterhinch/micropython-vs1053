@@ -31,9 +31,6 @@ Compatibility matrix
 | Pyboard      | FLAC           |                |
 | (1.x and D)  | VBR MP3        | VBR MP3        |
 |              | MP3 <= 256Kbps | MP3 <= 256Kbps |
-|:------------:|:--------------:|:--------------:|
 | Pyboard Lite | Not yet tested | MP3 <= 128Kbps |
-|:------------:|:--------------:|:--------------:|
 | ESP32        | MP3 <= 256Kbps | Unsupported    |
-|:------------:|:--------------:|:--------------:|
 | ESP8266      | MP3 <= 256Kbps | Unsupported    |
