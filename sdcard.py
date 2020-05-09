@@ -49,7 +49,6 @@ class SDCard:
         for i in range(512):
             self.dummybuf[i] = 0xFF
         self.dummybuf_memoryview = memoryview(self.dummybuf)
-        self.sdclear = b'\xff'*16  # PGH
 
         # initialise the card
         self.init_card()
@@ -72,7 +71,8 @@ class SDCard:
         self.init_spi(100000)
 
         # clock card at least 100 cycles with cs high
-        self.spi.write(self.sdclear)  # PGH
+        for i in range(16):
+            self.spi.write(b"\xff")
 
         # CMD0: init card; should return _R1_IDLE_STATE (allow 5 attempts)
         for _ in range(5):
