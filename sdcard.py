@@ -227,7 +227,6 @@ class SDCard:
         self.spi.write(b"\xff")
 
     def readblocks(self, block_num, buf):
-        # clock card at least 100 cycles with cs high
         self.spi.write(b'\xff')  # PGH
         nblocks = len(buf) // 512
         assert nblocks and not len(buf) % 512, "Buffer length is invalid"

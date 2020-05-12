@@ -5,8 +5,10 @@ driver: the `play` command will block for the duration of an MP3 file. It has
 been tested on an ESP8266 and ESP32. It will play 128Kbps and VBR MP3 files
 with the CPU running at stock frequency.
 
-CD quality audio may be achieved using FLAC files. Owing to the data rates a
-Pyboard host is required. The supplied plugin is necessary.
+Playback of CD quality audio may be achieved using FLAC files. Owing to the
+data rates a Pyboard host is required. The supplied plugin is necessary.
+
+Recording to a file is also supported.
 
 # 2. Wiring
 
@@ -47,11 +49,12 @@ filesystem:
  * `vs1053_syn.py` The driver
  * `sdcard.py` SD card driver (in root directory). See below.
 Optional test scripts (these differ in pin numbering):
- * `pbaudio_syn.py` For Pyboards.
- * `esp8266_audio.py` For ESP8266.
- * `esp32_audio.py` ESP32.
+ * `pbaudio_syn.py` For Pyboards. Plays back FLAC files.
+ * `esp8266_audio.py` For ESP8266. MP3 playback.
+ * `esp32_audio.py` ESP32. MP3 playback.
+ * `rectest.py` Recording test script.
 
-The test script will need to be adapted to reflect your MP3 files. It assumes
+Playback scripts will need to be adapted for your MP3 files. They assume
 files stored on an SD card in the board's socket. Adapt scripts for files
 stored elsewhere - this has been tested with MP3's on the Pyboard SD card.
 
@@ -117,6 +120,7 @@ Optional args - supply only if an SD card is fitted:
  * `play` Arg `s` a stream providing MP3 data. Plays the stream. Blocks until
  the stream is complete or cancellation occurs.
  * `cancel` No args. Cancels the currently playing track.
+ * `record` Record audio. See [Section 8](./SYNCHRONOUS.md#8-recording).
  * `sine_test` Arg `seconds=10` Plays a 517Hz sine wave for the specified time.
  Blocks until complete. This test sets the volume to maximum, leaving it at
  that level after exit.
@@ -192,7 +196,6 @@ comprise:
  * `SM_LAYER12` Enable MPEG layer 1 and 2 decode. Untested.
  See [section 6](./SYNCHRONOUS.md#6-data-rates).
  * `SM_DIFF` Inverts the left channel. Used for differential mono output.
- * `SM_LINE_IN` Line/microphone input. Input is currently unsupported.
 
 `EarSpeaker` processing claims to move the sound stage in front of the listener
 when using headphones. Clearing both bits (the default) disables this.
@@ -254,3 +257,114 @@ version `flac_plugin.bin` is included which does.
 For some reason installing the FLAC plugin takes some 17s on ESP32 while being
 almost instant on a Pyboard. Plugins may be found on the
 [VLSI solutions](http://www.vlsi.fi/en/support/software/vs10xxpatches.html) site.
+
+# 8. Recording
+
+Mono sound from a microphone or stereo sound from a line input may be recorded.
+The only file format supported by this driver is
+[IMA ADPCM](https://wiki.multimedia.cx/index.php?title=IMA_ADPCM): the chip
+compresses the data, reducing the data rate which must be handled by the host.
+Depending on host performance sample rates ranging from 8000sps up to around
+25Ksps may be employed.
+
+Subjectively 8000sps provides very clear speech, albeit with some loss of high
+frequencies. A rate of 25Ksps yields good quality audio with good high
+frequency response. However the Nyquist theorem implies that it cannot be
+audiophile quality.
+
+The files produced can be played back on the VS1053; they have also been tested
+on Linux audio players.
+
+A 10s mono speech recording from the line input may be done as follows:
+```python
+from vs1053_syn import *
+from machine import SPI, Pin
+
+spi = SPI(2)  # 2 MOSI Y8 MISO Y7 SCK Y6
+reset = Pin('Y5', Pin.OUT, value=1)  # Active low hardware reset
+xcs = Pin('Y4', Pin.OUT, value=1)  # Labelled CS on PCB, xcs on chip datasheet
+sdcs = Pin('Y3', Pin.OUT, value=1)  # SD card CS
+xdcs = Pin('Y2', Pin.OUT, value=1)  # Data chip select xdcs in datasheet
+dreq = Pin('Y1', Pin.IN)  # Active high data request
+player = VS1053(spi, reset, dreq, xdcs, xcs, sdcs=sdcs, mp='/fc')
+
+fn = '/fc/test_rec'
+
+def main(t=10):
+    print('Recording for {}s'.format(t))
+    overrun = player.record(fn, True, t * 1000, 8000, stereo=False)
+    print('Record complete')
+    if overrun > 768:
+        print('High data rate: loss may have occurred. Value = {}'.format(overrun))
+    player.reset()  # Necessary before playback
+    print('Playback')
+    player.volume(-10, -10)  # -10dB (0dB is loudest)
+    with open(fn, 'rb') as f:
+        player.play(f)
+
+main()
+```
+
+## 8.1 Wiring
+
+This is as per [section 2](./SYNCHRONOUS.md#2-wiring) with the addition of the
+microphone or line connection. The mic is connected between Adafruit JP3 pins
+2 and 3 (chip pins 1 and 2). For line input the two channels are connected to
+Adafruit JP3 pins 1 and 2 labelled Line2 and Mic+, with gnd connected to Agnd
+(pin 4). (Connections are to chip pins 1 and 48).
+
+The Adafruit pins connect directly to the chip. The chip data section 6
+recommends some circuitry between these audio signals and the chip to achieve
+capacitive coupling and filtering. Line input signals should be restricted to
+2.5Vp-p (data section 4.3).
+
+Note that microphone inputs are sensitive. Amplitude should be limited to 48mV
+p-p and precautions should be taken to minimise noise and hum pickup.
+
+## 8.2 The record method
+
+This takes the following args:
+ * `fn` Path and name of file for recording.
+ * `line` `True` for line input, `False` for microphone.
+ * `stop=10_000` If an integer is passed, recording will continue for that
+ duration in ms. If a function is passed, recording will stop if the function
+ returns `True`. The function should execute fast, otherwise the maximum
+ recording speed will be reduced.
+ * `sf=8000` Sample rate in samples/sec.
+ * `agc_gain=None` See **gain** below.
+ * `gain=None` See **gain** below.
+ * `stereo=True` Set `False` for mono recording (halves file size).
+
+Return value: `overrun`. An integer indicating the likelihood of data loss due
+to excessive sample rate. Values < 768 guarantee success. The closer the value
+to 1024 the greater the likelihood of loss.
+
+After recording, to return to playback mode the `.reset` method should be run.
+
+#### Gain
+
+The chip defines unity gain as a value of 1024. The gain range is from 65535
+down to 1, i.e. factors of 65.5 down to 1/1024. The driver uses values in dB
+which it converts to linear. The range is 36.5dB to -58dB. A value of `None`
+produces a linear value of 0 which has special meaning.
+
+Recording may be done at fixed gain or using AGC (automatic gain control). The
+latter is usually preferred for speech: it adjusts the gain to compensate for
+variations in the speaker's volume.
+
+To use AGC, `gain` should be set to `None`. Then `agc_gain` sets the maximum
+gain that may be employed by the AGC. A value of `None` allows the full range.
+For example a value of 6 would allow the AGC to vary gain to a maximum of +6dB.
+
+To use a fixed gain (e.g. for music) `agc_gain` should be set to `None`, with
+the value of `gain` specifying the required gain. Thus a value of 10 will
+provide a fixed gain of 10dB.
+
+## 8.3 Test results
+
+To date testing has only be done on Pyboards. It is likely that ESP32 and
+ESP8266 will only work at low data rates.
+
+On a Pyboard 1.1 recording worked without loss at up to 25K samples/s stereo. A
+sample rate of 32K caused `record` to report values > 768. The audio exhibited
+artifacts.

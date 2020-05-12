@@ -24,7 +24,7 @@ quality audio may be achieved using FLAC files.
 
 ### [Synchronous driver docs](./SYNCHRONOUS.md)
 
-Compatibility matrix
+Compatibility matrix:
 
 | Platform     | Synchronous    | Asynchronous   |
 |:------------:|:--------------:|:--------------:|
@@ -34,3 +34,6 @@ Compatibility matrix
 | Pyboard Lite | Not yet tested | MP3 <= 128Kbps |
 | ESP32        | MP3 <= 256Kbps | Unsupported    |
 | ESP8266      | MP3 <= 256Kbps | Unsupported    |
+
+The synchronous driver also supports recording audio to an IMA ADPCM file which
+can be played by the VS1053b or by other applications.

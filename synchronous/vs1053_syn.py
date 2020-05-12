@@ -10,9 +10,11 @@
 
 import time
 import os
+from array import array
 
+# V0.1.3 Support recording
 # V0.1.2 Add patch facility
-__version__ = (0, 1, 2)
+__version__ = (0, 1, 3)
 
 # Before setting, the internal clock runs at 12.288MHz. Data P7: "the
 # maximum speed for SCI reads is CLKI/7" hence max initial baudrate is
@@ -36,28 +38,28 @@ _SCI_HDAT0 = const(0x8)
 _SCI_HDAT1 = const(0x9)
 # _SCI_AIADDR = const(0xa)
 _SCI_VOL = const(0xb)
-# _SCI_AICTRL0 = const(0xc)
-# _SCI_AICTRL1 = const(0xd)
-# _SCI_AICTRL2 = const(0xe)
-# _SCI_AICTRL3 = const(0xf)
+_SCI_AICTRL0 = const(0xc)
+_SCI_AICTRL1 = const(0xd)
+_SCI_AICTRL2 = const(0xe)
+_SCI_AICTRL3 = const(0xf)
 
 # Mode register bits: Public
 SM_DIFF = const(0x01)  # Invert left channel (why?)
 SM_LAYER12 = const(0x02)  # Enable MPEG
 SM_EARSPEAKER_LO = const(0x10)  # EarSpeaker spatial processing
 SM_EARSPEAKER_HI = const(0x80)
-SM_LINE_IN = const(0x4000)  # Line/Mic in
 # Private bits
 _SM_RESET = const(0x04)
 _SM_CANCEL = const(0x08)
 _SM_TESTS = const(0x20)
 _SM_SDINEW = const(0x800)
+_SM_ADPCM = const(0x1000)
+_SM_LINE_IN = const(0x4000)  # Line/Mic in
 # Unused and private
 # _SM_STREAM = const(0x40)
 # _SM_DACT = const(0x100)
 # _SM_SDIORD = const(0x200)
 # _SM_SDISHARE = const(0x400)
-# _SM_ADPCM = const(0x1000)
 # _SM_ADPCM_HP = const(0x2000)
 # _SM_CLK_RANGE = const(0x8000)
 
@@ -70,11 +72,23 @@ _IO_DIRECTION = const(0xc017)  # Datasheet 11.10
 _IO_READ = const(0xc018)
 _IO_WRITE = const(0xc019)
 
+# Recording patches. RAM-efficient storage.
+_PATCH = array('H', (0x3e12, 0xb817, 0x3e14, 0xf812, 0x3e01, 0xb811, 0x0007, 0x9717,
+            0x0020, 0xffd2, 0x0030, 0x11d1, 0x3111, 0x8024, 0x3704, 0xc024,
+            0x3b81, 0x8024, 0x3101, 0x8024, 0x3b81, 0x8024, 0x3f04, 0xc024,
+            0x2808, 0x4800, 0x36f1, 0x9811))
+_PATCH1 = array('H', (0x2a00, 0x040e))
+# Header for 
+_HEADER = (b'RIFF\x00\x00\x00\x00WAVEfmt '
+            b'\x14\x00\x00\x00\x11\x00\x02\x00\x40\x1f\x00\x00\xae\x1f\x00\x00'
+            b'\x00\x02\x04\x00\x02\x00\xf9\x01fact\x04\x00\x00\x00'
+            b'\x00\x00\x00\x00data\x00\x00\x00\x00')  # Template.
 
 # xcs is chip XSS/
 # xdcs is chipXDCS/BSYNC/
 # sdcs is SD card CS/
 class VS1053:
+
 
     def __init__(self, spi, reset, dreq, xdcs, xcs, sdcs=None, mp=None, cancb=lambda : False):
         self._reset = reset
@@ -85,7 +99,8 @@ class VS1053:
         self._spi = spi
         self._cbuf = bytearray(4)  # Command buffer
         self._cancb = cancb  # Cancellation callback
-        self._slow_spi = True
+        self._slow_spi = True  # Start on low baudrate
+        self._overrun = 0  # Recording
         self.reset()
         if ((sdcs is not None) and (mp is not None)):
             import sdcard
@@ -184,7 +199,32 @@ class VS1053:
                     val = read_word(s)
                     self._write_reg(addr, val)
 
-# *** API ***
+# Support for recording
+
+    # Optimised for speed
+    @micropython.native
+    def _save(self, s, rbuf=bytearray(4), hdat0=b'\x03\x08\xff\xff'):
+        n = self._read_reg(_SCI_HDAT1)
+        self._spi.init(baudrate = _SCI_BAUDRATE)
+        mvr = memoryview(rbuf)
+        for _ in range(n):
+            self._xcs(0)
+            self._spi.write_readinto(hdat0, rbuf)
+            self._xcs(1)
+            s.write(mvr[2:])  # Data 10.8.4 MSB first
+        self._overrun = max(self._overrun, n)
+        return n  # Samples written
+
+    # Patch for recording. Data 10.8.1
+    def _write_patch(self):
+        self._write_reg(_SCI_WRAMADDR, 0x8010)
+        for x in _PATCH:
+            self._write_reg(_SCI_WRAM, x)
+        self._write_reg(_SCI_WRAMADDR, 0x8028)
+        for x in _PATCH1:
+            self._write_reg(_SCI_WRAM, x)
+
+# *** PLAYBACK API ***
 
     def reset(self):  # Issue hardware reset to VS1053
         self._xcs(1)
@@ -333,3 +373,58 @@ class VS1053:
             with open(f, 'rb') as s:
                 self._patch_stream(s)
         print('Patching complete.')
+
+# *** RECORD API ***
+
+    # Convert a dB value to a linear gain as recognised by the chip. Unity gain
+    # is a value of 1024. Range is 1 <= gain <= 65535 with 0 having special
+    # meaning: this is represented by None
+    def from_db(self, db):
+        return 0 if db is None else max(min(round(1024*(10**(db/20))), 65535), 1)
+
+    def record(self, fn, line, stop=10_000, sf=8000, agc_gain=None, gain=None, stereo=True):
+        self._overrun = 0
+        with open(fn, 'wb') as f:
+            file_size = f.write(_HEADER)  # Write the header template
+            old_mode = self._read_reg(_SCI_MODE)  # Current mode
+            mode = old_mode | _SM_RESET | _SM_ADPCM
+            if line:
+                mode |= _SM_LINE_IN
+            self._write_reg(_SCI_AICTRL0, sf)  # Sampling freq
+            self._write_reg(_SCI_AICTRL1, self.from_db(gain))  # None == AGC
+            self._write_reg(_SCI_AICTRL2, self.from_db(agc_gain))  # Max AGC gain
+            self._write_reg(_SCI_AICTRL3, 0 if stereo else 2)  # Always ADPCM. Mono is left channel.
+            self._write_reg(_SCI_MODE, mode)  # Must start before patch.
+            self._write_patch()
+
+            nsamples = 0
+            if callable(stop):
+                while not stop():
+                    nsamples += self._save(f)
+            else:
+                t = time.ticks_add(time.ticks_ms(), stop)
+                while time.ticks_diff(time.ticks_ms(), t) < 0:
+                    nsamples += self._save(f)
+
+        self._spi.init(baudrate = _DATA_BAUDRATE)
+        file_size += nsamples * 2
+        chans = 2 if stereo else 1
+        with open(fn, 'r+b') as f:  # Patch up header data 10.8.4
+            nblocks = nsamples // 256
+            f.seek(4)
+            f.write(int.to_bytes(nblocks * 256 * chans + 52, 4, 'little'))
+            if not stereo:
+                f.seek(22)
+                f.write(b'\x01')
+                f.seek(33)
+                f.write(b'\x01')
+            f.seek(24)
+            f.write(int.to_bytes(sf, 4, 'little'))
+            f.seek(28)
+            f.write(int.to_bytes(round(sf * 256 * chans / 505), 4, 'little'))  # Byte rate stereo round or floor div?
+            f.seek(48)
+            f.write(int.to_bytes(nblocks * 505, 4, 'little'))  # Stereo??
+            f.seek(56)
+            f.write(int.to_bytes(nblocks * 256 * chans, 4, 'little'))
+        # print('nsamples', nsamples)
+        return self._overrun
