@@ -14,8 +14,8 @@ pins which are supported by the driver. You gain a pin :).
 
 There are two versions of the driver: synchronous and asynchronous. The
 asynchronous version uses `uasyncio` to enable tasks (such as a GUI interface)
-to run concurrently while playing audio files. Sadly the overhead of
-`uasyncio` prevents it from working properly on ESP8266 and ESP32.
+to run concurrently while playing audio files. Sadly the overhead of `uasyncio`
+prevents audio playback on ESP8266 and ESP32.
 
 ### [Asynchronous driver docs](./ASYNC.md)
 
@@ -35,5 +35,5 @@ Compatibility matrix:
 | ESP32        | MP3 <= 256Kbps | Unsupported    |
 | ESP8266      | MP3 <= 256Kbps | Unsupported    |
 
-The synchronous driver also supports recording audio to an IMA ADPCM file which
-can be played by the VS1053b or by other applications.
+The synchronous driver also supports recording audio to an IMA ADPCM `wav` file
+which can be played by the VS1053b or by other applications.

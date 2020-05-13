@@ -310,17 +310,25 @@ main()
 
 This is as per [section 2](./SYNCHRONOUS.md#2-wiring) with the addition of the
 microphone or line connection. The mic is connected between Adafruit JP3 pins
-2 and 3 (chip pins 1 and 2). For line input the two channels are connected to
-Adafruit JP3 pins 1 and 2 labelled Line2 and Mic+, with gnd connected to Agnd
-(pin 4). (Connections are to chip pins 1 and 48).
+2 and 3. For line input the two channels are connected to Adafruit JP3 pins 1
+and 2 as below. n/c indicates no connection.
+
+| Chip pin/label | Adafruit     | Microphone | Line |
+|:--------------:|:------------:|:----------:|:----:|
+| 48 LINE 2      | JP3/1 LINE 2 |            |  L   |
+| 1 MICP/Linein  | JP3/2 MIC+   |  +         |  R   |
+| 2 MICN         | JP3/3 MIC-   |  -         | n/c  |
+| Various        | JP3/4 AGND   | Gnd        | Gnd  |
 
 The Adafruit pins connect directly to the chip. The chip data section 6
-recommends some circuitry between these audio signals and the chip to achieve
-capacitive coupling and filtering. Line input signals should be restricted to
-2.5Vp-p (data section 4.3).
+recommends circuitry between these audio signals and the chip for capacitive
+coupling and filtering.
 
-Note that microphone inputs are sensitive. Amplitude should be limited to 48mV
-p-p and precautions should be taken to minimise noise and hum pickup.
+Line input signals should be restricted to 2.5Vp-p (data section 4.3) and mic
+amplitude should be limited to 48mV p-p to avoid distortion.
+
+Note microphone inputs are sensitive; precautions should be taken to minimise
+noise and hum pickup.
 
 ## 8.2 The record method
 
@@ -337,25 +345,27 @@ This takes the following args:
  * `stereo=True` Set `False` for mono recording (halves file size).
 
 Return value: `overrun`. An integer indicating the likelihood of data loss due
-to excessive sample rate. Values < 768 guarantee success. The closer the value
+to excessive sample rate. Values < 768 indicate success. The closer the value
 to 1024 the greater the likelihood of loss.
 
 After recording, to return to playback mode the `.reset` method should be run.
 
 #### Gain
 
-The chip defines unity gain as a value of 1024. The gain range is from 65535
-down to 1, i.e. factors of 65.5 down to 1/1024. The driver uses values in dB
-which it converts to linear. The range is 36.5dB to -58dB. A value of `None`
-produces a linear value of 0 which has special meaning.
+The chip defines unity gain as a value of 1024. The gain range is linear, from
+1 to 65535, with 0 having a special meaning. Hence a value of 1 corresponds to
+a gain of 1/1024 and a value of 65535 is a gain of 65.5. The driver uses values
+in dB which it converts to linear. The range is -58 to +36.5dB. A value of
+`None` produces the 0 value whose meaning is discussed below.
 
 Recording may be done at fixed gain or using AGC (automatic gain control). The
 latter is usually preferred for speech: it adjusts the gain to compensate for
 variations in the speaker's volume.
 
 To use AGC, `gain` should be set to `None`. Then `agc_gain` sets the maximum
-gain that may be employed by the AGC. A value of `None` allows the full range.
-For example a value of 6 would allow the AGC to vary gain to a maximum of +6dB.
+gain that may be employed by the AGC. An `agc_gain` value of `None` allows the
+full range. For example an `agc_gain` value of 6 would allow the AGC to vary
+gain to a maximum of +6dB.
 
 To use a fixed gain (e.g. for music) `agc_gain` should be set to `None`, with
 the value of `gain` specifying the required gain. Thus a value of 10 will
@@ -366,12 +376,12 @@ provide a fixed gain of 10dB.
 To date testing has only be done on Pyboards. It is likely that ESP32 and
 ESP8266 will only work at low data rates.
 
-On a Pyboard 1.1 recording worked without loss at up to 25K samples/s stereo. A
-sample rate of 32K caused `record` to report values > 768. The audio exhibited
-artifacts.
+On a Pyboard 1.1 recording worked without loss at rates of up to and including
+25K samples/s stereo. A sample rate of 32Ksps resulted in `record` returning
+`overrun` values over 768 and audio with clear artifacts.
 
 Recording at 8000sps produces about 4KiB/s for mono files, 8KiB/s for stereo.
 Both mono and stereo files play back correctly on the VS1053b. Stereo files
 also played back on the Linux players tested. Mono files played on VLC but not
-on rhythmbox. It would seem that the file header is incorrect but despite some
-effort I have failed to spot the problem.
+on rhythmbox. It is likely that the file header is incorrect but despite some
+effort I have failed to identify the problem.
