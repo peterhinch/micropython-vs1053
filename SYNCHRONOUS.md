@@ -354,9 +354,10 @@ After recording, to return to playback mode the `.reset` method should be run.
 
 The chip defines unity gain as a value of 1024. The gain range is linear, from
 1 to 65535, with 0 having a special meaning. Hence a value of 1 corresponds to
-a gain of 1/1024 and a value of 65535 is a gain of 65.5. The driver uses values
-in dB which it converts to linear. The range is -58 to +36.5dB. A value of
-`None` produces the 0 value whose meaning is discussed below.
+a gain of 1/1024 and a value of 65535 is a gain of 64. The driver uses values
+in dB which it converts to linear. The range is -60dB to +36dB; out of range
+values are constrained to in-range figures. A value of `None` produces the 0
+value whose meaning is discussed below.
 
 Recording may be done at fixed gain or using AGC (automatic gain control). The
 latter is usually preferred for speech: it adjusts the gain to compensate for
@@ -368,7 +369,7 @@ full range. For example an `agc_gain` value of 6 would allow the AGC to vary
 gain to a maximum of +6dB.
 
 To use a fixed gain (e.g. for music) `agc_gain` should be set to `None`, with
-the value of `gain` specifying the required gain. Thus a value of 10 will
+a numeric value of `gain` specifying the required gain. Thus a value of 10 will
 provide a fixed gain of 10dB.
 
 ## 8.3 Test results
