@@ -273,7 +273,8 @@ frequency response. However the Nyquist theorem implies that it cannot be
 audiophile quality.
 
 The files produced can be played back on the VS1053; they have also been tested
-on Linux audio players.
+on Linux audio players with one anomaly. See
+[section 8.3](./SYNCHRONOUS.md#83-test-results).
 
 A 10s mono speech recording from the line input may be done as follows:
 ```python
@@ -288,7 +289,7 @@ xdcs = Pin('Y2', Pin.OUT, value=1)  # Data chip select xdcs in datasheet
 dreq = Pin('Y1', Pin.IN)  # Active high data request
 player = VS1053(spi, reset, dreq, xdcs, xcs, sdcs=sdcs, mp='/fc')
 
-fn = '/fc/test_rec'
+fn = '/fc/test_rec.wav'
 
 def main(t=10):
     print('Recording for {}s'.format(t))
@@ -368,3 +369,9 @@ ESP8266 will only work at low data rates.
 On a Pyboard 1.1 recording worked without loss at up to 25K samples/s stereo. A
 sample rate of 32K caused `record` to report values > 768. The audio exhibited
 artifacts.
+
+Recording at 8000sps produces about 4KiB/s for mono files, 8KiB/s for stereo.
+Both mono and stereo files play back correctly on the VS1053b. Stereo files
+also played back on the Linux players tested. Mono files played on VLC but not
+on rhythmbox. It would seem that the file header is incorrect but despite some
+effort I have failed to spot the problem.

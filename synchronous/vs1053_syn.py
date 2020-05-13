@@ -397,7 +397,7 @@ class VS1053:
             self._write_reg(_SCI_MODE, mode)  # Must start before patch.
             self._write_patch()
 
-            nsamples = 0
+            nsamples = 0  # Number of samples i.e. 16 bit words.
             if callable(stop):
                 while not stop():
                     nsamples += self._save(f)
@@ -409,22 +409,25 @@ class VS1053:
         self._spi.init(baudrate = _DATA_BAUDRATE)
         file_size += nsamples * 2
         chans = 2 if stereo else 1
-        with open(fn, 'r+b') as f:  # Patch up header data 10.8.4
-            nblocks = nsamples // 256
-            f.seek(4)
+        # Now know file size so patch header. Data 10.8.4. Arithmetic could be
+        # simplified. Keeping it close to datasheet for now.
+        with open(fn, 'r+b') as f:
+            # Stereo block is 256 words, mono 128.
+            nblocks = nsamples // (256 if stereo else 128)
+            f.seek(4)  # Datasheet ref ChunkSize
             f.write(int.to_bytes(nblocks * 256 * chans + 52, 4, 'little'))
             if not stereo:
                 f.seek(22)
                 f.write(b'\x01')
                 f.seek(33)
                 f.write(b'\x01')
-            f.seek(24)
+            f.seek(24)  # SampleRate
             f.write(int.to_bytes(sf, 4, 'little'))
-            f.seek(28)
-            f.write(int.to_bytes(round(sf * 256 * chans / 505), 4, 'little'))  # Byte rate stereo round or floor div?
-            f.seek(48)
+            f.seek(28)  # ByteRate
+            f.write(int.to_bytes(round(sf * 256 * chans / 505), 4, 'little'))
+            f.seek(48)  # NumOfSamples
             f.write(int.to_bytes(nblocks * 505, 4, 'little'))  # Stereo??
-            f.seek(56)
+            f.seek(56)  # SubChunk3Size
             f.write(int.to_bytes(nblocks * 256 * chans, 4, 'little'))
         # print('nsamples', nsamples)
         return self._overrun

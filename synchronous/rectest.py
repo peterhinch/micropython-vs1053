@@ -14,11 +14,11 @@ xdcs = Pin('Y2', Pin.OUT, value=1)  # Data chip select xdcs in datasheet
 dreq = Pin('Y1', Pin.IN)  # Active high data request
 player = VS1053(spi, reset, dreq, xdcs, xcs, sdcs=sdcs, mp='/fc')
 
-fn = '/fc/test_rec1'
+fn = '/fc/stereo_8k.wav'
 
 def main(t=10):
     print('Recording for {}s'.format(t))
-    overrun = player.record(fn, True, t * 1000, 8000, stereo=False)
+    overrun = player.record(fn, True, t * 1000, 8000)  #, stereo=False)
     print('Record complete')
     if overrun > 768:
         print('High data rate: loss may have occurred. Value = {}'.format(overrun))
