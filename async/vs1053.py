@@ -12,7 +12,8 @@ import time
 import os
 import io
 import uasyncio as asyncio
-
+from machine import UART
+# V0.1.3 Non allocating play loop
 # V0.1.2 Add patch facility
 # V0.1.1 Bugfix: SPI baudrate was wrong during reset.
 __version__ = (0, 1, 2)
@@ -297,16 +298,17 @@ class VS1053(io.IOBase):
             while self._cancnt:  # In progress
                 await asyncio.sleep_ms(50)
 
-    # Should check for short reads at EOF. Loop is time critical so I skip
-    # this check. Sending a few bytes of old data has no obvious consequence.
+    @micropython.native
     async def play(self, s, buf=bytearray(32)):
+        mv = memoryview(buf)
         self._playing = True
         self._cancnt = 0
-        cnt = 0
         sw = self._swriter
-        while s.readinto(buf):  # Read <=32 bytes
-            cnt += 1
-            await sw.awrite(buf)
+        while nr := s.readinto(buf):  # Read <=32 bytes
+            # Non-allocating write
+            # HACK awaiting https://github.com/micropython/micropython/pull/7868
+            sw.out_buf = mv[:nr]
+            await sw.drain()
             # Check for cancelling. Datasheet section 10.5.2
             if self._cancnt:
                 if self._cancnt == 1:  # Just cancelled
