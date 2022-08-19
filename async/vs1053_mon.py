@@ -316,8 +316,8 @@ class VS1053:
                     for n in range(len(buf)):
                         buf[n] = efb
                     for n in range(64):  # send 2048 bytes of end fill byte
-                        await sw.awrite(buf)
-                    await sw.awrite(buf[:4])  # Take to 2052 bytes
+                        self.write(buf)
+                    self.write(buf[:4])  # Take to 2052 bytes
                     if self._read_reg(_SCI_HDAT0) or self._read_reg(_SCI_HDAT1):
                         raise RuntimeError('Invalid HDAT value.')
                     break
@@ -333,13 +333,12 @@ class VS1053:
 
     # Produce a 517Hz sine wave
     async def sine_test(self, seconds=10):
-        sw = self._swriter
         self.soft_reset()
         self.mode_set(_SM_TESTS)
         # 0x66-> Sample rate 22050 * 6/128 = 1034Hz 0x63->517Hz
-        await sw.awrite(b'\x53\xef\x6e\x66\0\0\0\0')
+        self.write(b'\x53\xef\x6e\x66\0\0\0\0')
         await asyncio.sleep(seconds)
-        await sw.awrite(b'\x45\x78\x69\x74\0\0\0\0')
+        self.write(b'\x45\x78\x69\x74\0\0\0\0')
         self.mode_clear(_SM_TESTS)
 
     # Given a directory apply any patch files found. Applied in alphabetical

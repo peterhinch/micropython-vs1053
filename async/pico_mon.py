@@ -3,12 +3,13 @@ import uasyncio as asyncio
 import monitor
 monitor.set_device(UART(0, 1_000_000))
 
-reset = Pin(15, Pin.OUT, value=1)  # Active low hardware reset
-sdcs = Pin(5, Pin.OUT, value=1)  # SD card CS
 xcs = Pin(14, Pin.OUT, value=1)  # Labelled CS on PCB, xcs on chip datasheet
+reset = Pin(15, Pin.OUT, value=1)  # Active low hardware reset
 xdcs = Pin(2, Pin.OUT, value=1)  # Data chip select xdcs in datasheet
 dreq = Pin(3, Pin.IN)  # Active high data request
-player = VS1053(SPI(0), reset, dreq, xdcs, xcs, sdcs, '/fc')
+sdcs = Pin(5, Pin.OUT, value=1)  # SD card CS
+spi = SPI(0, sck=Pin(6), mosi=Pin(7), miso=Pin(4))
+player = VS1053(spi, reset, dreq, xdcs, xcs, sdcs, '/fc')
 
 async def heartbeat():
     led = Pin(25, Pin.OUT)
