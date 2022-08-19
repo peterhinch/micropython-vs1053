@@ -11,6 +11,12 @@
 import time
 import os
 import uasyncio as asyncio
+from machine import UART
+import monitor
+# monitor.set_device(UART(0, 1_000_000))
+trig1 = monitor.trigger(1)
+trig2 = monitor.trigger(2)
+trig3 = monitor.trigger(3)
 
 # V0.1.3 Synchronous code in play loop
 # V0.1.2 Add patch facility
@@ -192,7 +198,6 @@ class VS1053:
         self._xdcs(0)
         self._spi.write(buf)
         self._xdcs(1)
-        return len(buf)
 
 # *** API ***
 
@@ -286,20 +291,22 @@ class VS1053:
             while self._cancnt:  # In progress
                 await asyncio.sleep_ms(50)
 
-    # native necessary to play 192Kbps MP3 on Pico at stock clock rate
     @micropython.native
     async def play(self, s, buf=bytearray(32)):
         self._playing = True
         self._cancnt = 0
-        dreq = self._dreq
         cnt = 0
+        dreq = self._dreq
         while s.readinto(buf):  # Read <=32 bytes
             cnt += 1
-            # Yield when forced to wait or after N iterations
+            trig2(False)
             while (not dreq()) or cnt > 10:
                 await asyncio.sleep_ms(0)
                 cnt = 0
+                trig3()
+            trig1(True)
             self.write(buf)
+            trig1(False)
             # Check for cancelling. Datasheet section 10.5.2
             if self._cancnt:
                 if self._cancnt == 1:  # Just cancelled
@@ -318,6 +325,7 @@ class VS1053:
                     self.soft_reset()
                     break
                 self._cancnt += 1  # keep feeding data from stream
+            trig2(True)
         else:
             await self._end_play(buf)
         self._cancnt = 0
