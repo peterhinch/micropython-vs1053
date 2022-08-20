@@ -276,6 +276,15 @@ class VS1053:
         bits &= self.mode()
         self._write_reg(_SCI_MODE, _SM_SDINEW | bits)  # Ensure new bit always set
 
+    def enable_i2s(self, rate=48, mclock=False):
+        v = 0x0C if mclock else 0x04  # Enable I2S and mclock if required
+        if rate == 96:
+            v |= 1
+        elif rate == 192:
+            v |= 2
+        self._write_ram(0xC017, 0xF0)
+        self._write_ram(0xC040, v)
+
 # Doesn't return anything useful for MP3
 #    def pos_ms(self):  # Position into stream in ms
 #        return self._read_ram(_POS_MS_LS) | (self._read_ram(_POS_MS_MS) << 16)
