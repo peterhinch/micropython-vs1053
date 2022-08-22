@@ -17,7 +17,7 @@ test script assumes a Pyboard host with the following wiring. Note `cs` denotes
 an active low chip select, `nc` denotes no connection.
 
 | VS1053 | Pyboard | Signal       |
-|:------:|:-------:|:------------:|
+|:-------|:--------|:-------------|
 | xdcs   | Y2      | Data cs      |
 | sdcs   | Y3      | SD card cs (see below) |
 | cs     | Y4      | Control cs (chip datasheet xcs) |
@@ -35,7 +35,7 @@ If the board's SD card slot is not used the `sdcs` pin may be unconnected.
 Headphones or an audio amplifier may be connected as follows:
 
 | VS1053 | Audio |
-|:------:|:-----:|
+|:-------|:------|
 | agnd   | gnd   |
 | lout   | left  |
 | rout   | right |
@@ -156,6 +156,9 @@ Optional args - supply only if an SD card is fitted:
  * `patch` Optional arg `loc` a directory containing plugin files for the chip.
  The default directory is `/plugins` on the mounted flash card. Plugins are
  installed in alphabetical order.  See [Plugins](./SYNCHRONOUS.md#7-plugins).
+ * `enable_i2s` Args `rate=48` `mclock=False`. The `rate` arg may be 48, 96 or
+ 192 KHz. Invalid rates will be ignored, the rate defaulting to 48KHz. The
+ `mclock` arg enables an optional 12.288MHz clock to be output on chip pin 25.
 
 ### 5.2.1 Setting the frequency response
 
@@ -314,7 +317,7 @@ microphone or line connection. The mic is connected between Adafruit JP3 pins
 and 2 as below. n/c indicates no connection.
 
 | Chip pin/label | Adafruit     | Microphone | Line |
-|:--------------:|:------------:|:----------:|:----:|
+|:---------------|:-------------|:-----------|:-----|
 | 48 LINE 2      | JP3/1 LINE 2 |            |  L   |
 | 1 MICP/Linein  | JP3/2 MIC+   |  +         |  R   |
 | 2 MICN         | JP3/3 MIC-   |  -         | n/c  |

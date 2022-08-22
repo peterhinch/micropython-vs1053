@@ -189,6 +189,8 @@ class VS1053:
                     self._write_reg(addr, val)
 
     def write(self, buf):
+        while not self._dreq():  # minimise for speed
+            pass
         self._xdcs(0)
         self._spi.write(buf)
         self._xdcs(1)
@@ -312,7 +314,9 @@ class VS1053:
             while (not dreq()) or cnt > 30:  # 960 byte backstop
                 await asyncio.sleep_ms(0)
                 cnt = 0
-            self.write(buf)
+            self._xdcs(0)  # Fast write
+            self._spi.write(buf)
+            self._xdcs(1)
             # Check for cancelling. Datasheet section 10.5.2
             if self._cancnt:
                 if self._cancnt == 1:  # Just cancelled

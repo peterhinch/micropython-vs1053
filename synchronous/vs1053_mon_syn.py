@@ -11,6 +11,10 @@
 import time
 import os
 from array import array
+import monitor
+trig1 = monitor.trigger(1)
+trig2 = monitor.trigger(2)
+trig3 = monitor.trigger(3)
 
 # V0.1.3 Support recording
 # V0.1.2 Add patch facility
@@ -332,20 +336,18 @@ class VS1053:
         cnt = 0
         dreq = self._dreq
         while s.readinto(buf):  # Read <=32 bytes
+            trig2(False)
             cnt += 1
-            # When running, dreq goes True when on-chip buffer can hold about 640 bytes.
-            # At 128Kbps this will take 40ms - at higher rates, less. Call the cancel
-            # callback during waiting periods or after 960 bytes if dreq never goes False.
-            # This is a fault condition where the VS1053 wants data faster than we can
-            # provide it. 
             while (not dreq()) or cnt > 30:  # 960 byte backstop
                 cnt = 0
                 if cancnt == 0 and cancb():  # Not cancelling. Check callback when waiting on dreq.
                     cancnt = 1  # Send at least one more buffer
+            trig1(True)
             self._xdcs(0)  # Fast write
             self._spi.write(buf)
             self._xdcs(1)
-            # cancnt > 0: Cancelling
+            trig1(False)
+            trig2(True)
             if cancnt:
                 if cancnt == 1:  # Just cancelled
                     self.mode_set(_SM_CANCEL)

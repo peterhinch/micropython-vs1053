@@ -4,8 +4,8 @@ The driver is asynchronous enabling other tasks (such as a GUI interface) to
 run concurrently while playing audio files.
 
 While the driver is cross-platform, testing on ESP8266 and ESP32 failed. It
-works on Pyboard D, Pyboard 1.x and Pyboard Lite (the latter restricted to
-128Kbps MP3 files). The synchronous driver works on ESP8266.
+works on Pico, Pyboard D, Pyboard 1.x and Pyboard Lite (the latter restricted
+to 128Kbps MP3 files). The synchronous driver works on ESP8266.
 
 # 2. Wiring
 
@@ -14,7 +14,7 @@ test script assumes a Pyboard host with the following wiring. Note `cs` denotes
 an active low chip select, `nc` denotes no connection.
 
 | VS1053 | Pyboard | Signal       |
-|:------:|:-------:|:------------:|
+|:-------|:--------|:-------------|
 | xdcs   | Y2      | Data cs      |
 | sdcs   | Y3      | SD card cs (see below) |
 | cs     | Y4      | Control cs (chip datasheet xcs) |
@@ -32,7 +32,7 @@ If the board's SD card slot is not used the `sdcs` pin may be unconnected.
 Headphones or an audio amplifier may be connected as follows:
 
 | VS1053 | Audio |
-|:------:|:-----:|
+|:-------|:------|
 | agnd   | gnd   |
 | lout   | left  |
 | rout   | right |
@@ -137,6 +137,9 @@ Optional args - supply only if an SD card is fitted:
  * `patch` Optional arg `loc` a directory containing plugin files for the chip.
  The default directory is `/plugins` on the mounted flash card. Plugins are
  installed in alphabetical order. See [Plugins](./ASYNC.md#7-plugins).
+ * `enable_i2s` Args `rate=48` `mclock=False`. The `rate` arg may be 48, 96 or
+ 192 KHz. Invalid rates will be ignored, the rate defaulting to 48KHz. The
+ `mclock` arg enables an optional 12.288MHz clock to be output on chip pin 25.
  
 ### 5.3.1 Setting the frequency response
 
