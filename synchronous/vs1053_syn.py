@@ -12,9 +12,10 @@ import time
 import os
 from array import array
 
+# V0.1.4 .play efficiency improvements, test with Pico
 # V0.1.3 Support recording
 # V0.1.2 Add patch facility
-__version__ = (0, 1, 3)
+__version__ = (0, 1, 4)
 
 # Before setting, the internal clock runs at 12.288MHz. Data P7: "the
 # maximum speed for SCI reads is CLKI/7" hence max initial baudrate is
