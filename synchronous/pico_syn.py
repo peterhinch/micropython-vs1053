@@ -31,8 +31,7 @@ def main(locn):
     player.volume(-10, -10)  # -10dB (0dB is loudest)
     # player.mode_set(SM_EARSPEAKER_LO | SM_EARSPEAKER_HI)  # You decide.
     # player.response(bass_freq=150, bass_amp=15)  # This is extreme.
-    #songs = sorted([x[0] for x in os.ilistdir(locn) if x[1] != 0x4000])
-    songs = ['07 - Stainsby Girls.flac', "04 - Fool (If You Think It's Over).flac"]
+    songs = sorted([x[0] for x in os.ilistdir(locn) if x[1] != 0x4000])
     for song in songs:
         print(song)
         fn = '/'.join((locn, song))
@@ -41,4 +40,4 @@ def main(locn):
             time.sleep(1)
 
 #main('/fc/192kbps')
-main('/fc')
+main('/fc/flac')

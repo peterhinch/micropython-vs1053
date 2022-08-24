@@ -297,7 +297,6 @@ class VS1053:
             while self._cancnt:  # In progress
                 await asyncio.sleep_ms(50)
 
-    # native necessary to play 192Kbps MP3 on Pico at stock clock rate
     @micropython.native
     async def play(self, s, buf=bytearray(32)):
         self._playing = True

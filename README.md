@@ -21,8 +21,8 @@ prevents audio playback on ESP8266 and ESP32.
 
 ### [Asynchronous driver docs](./ASYNC.md)
 
-The synchronous driver has been tested on ESP8266 and ESP32. On Pyboards CD
-quality audio may be achieved using FLAC files.
+The synchronous driver has been tested on ESP8266 and ESP32. On Pyboards and
+te Pio CD quality audio may be achieved using FLAC files.
 
 ### [Synchronous driver docs](./SYNCHRONOUS.md)
 
@@ -34,7 +34,8 @@ Compatibility matrix:
 | (1.x and D)  | VBR MP3        | VBR MP3        |
 |              | MP3 <= 256Kbps | MP3 <= 256Kbps |
 | Pyboard Lite | Not yet tested | MP3 <= 128Kbps |
-| Pico         |                | VBR MP3        |
+| Pico         | FLAC, VBR MP3, | FLAC, VBR MP3, |
+|              | MP3 <= 256Kbps | MP3 <= 256Kbps |
 | ESP32        | MP3 <= 256Kbps | Unsupported    |
 | ESP8266      | MP3 <= 256Kbps | Unsupported    |
 
