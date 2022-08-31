@@ -21,6 +21,10 @@ prevents audio playback on ESP8266.
 
 ## 1.1 Version log
 
+V0.1.5 Aug 2022 Asynchronous version has an optional buffered mode. This may
+improve performance. It overcomes an apparent firmware bug which prevents the
+normal version from working on ESP32.
+
 V0.1.4 Aug 2022 The performance of the asynchronous driver is substantially
 improved, with some improvement to the synchronous driver. Both drivers have
 the means to enable I2S output from the VS1053b chip.
