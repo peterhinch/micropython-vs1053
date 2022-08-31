@@ -93,7 +93,6 @@ issuing `.patch()` after instantiation:
 player = VS1053(SPI(2), reset, dreq, xdcs, xcs, sdcs, '/fc')
 player.patch()
 ```
-Because of performance limitations this requires a Pyboard host.
 
 # 5. VS1053 class
 
@@ -254,12 +253,12 @@ These binary files provide a means of installing enhancements and bug fixes on
 the VS1053. These are stored in RAM so need to be loaded after a power cycle.
 The only plugin I have tested is the FLAC plugin.
 
-The current FLAC driver `vs1053b-patches-flac.plg` does not work. An older
-version `flac_plugin.bin` is included which does.
-
 For some reason installing the FLAC plugin takes some 17s on ESP32 while being
 almost instant on a Pyboard. Plugins may be found on the
 [VLSI solutions](http://www.vlsi.fi/en/support/software/vs10xxpatches.html) site.
+The supplied `patch.bin` file enables FLAC decoding and was current at the time
+of writing (Aug 2022) See [main README](./README.md#4-plugins) for details of
+how to process `.plg` files.
 
 # 8. Recording
 

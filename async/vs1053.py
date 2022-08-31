@@ -1,4 +1,4 @@
-# VS1053 driver for MicroPython
+# vs1053.py Asynchronous VS1053 driver for MicroPython
 # (C) Peter Hinch 2020-2022
 # Released under the MIT licence
 
@@ -12,10 +12,12 @@ import time
 import os
 import uasyncio as asyncio
 
+# V0.1.5 Buffered read option for ESP32 compatibility.
 # V0.1.4 .play efficiency improvements, test with Pico
+# V0.1.3 Synchronous code in play loop
 # V0.1.2 Add patch facility
 # V0.1.1 Bugfix: SPI baudrate was wrong during reset.
-__version__ = (0, 1, 4)
+__version__ = (0, 1, 5)
 
 # Before setting, the internal clock runs at 12.288MHz. Data P7: "the
 # maximum speed for SCI reads is CLKI/7" hence max initial baudrate is
@@ -74,18 +76,21 @@ _IO_DIRECTION = const(0xc017)  # Datasheet 11.10
 _IO_READ = const(0xc018)
 _IO_WRITE = const(0xc019)
 
-# I/O
-# MP_STREAM_POLL_RD = const(1)
-MP_STREAM_POLL_WR = const(4)
-MP_STREAM_POLL = const(3)
-MP_STREAM_ERROR = const(-1)
+_BUF_SIZE = 2048
+_BUF_MASK = _BUF_SIZE - 1
+"""
+Buffering: aim is to fill the software buffer during the periods when the VS1053
+hardware buffer is more than 2/3 full and unable to accept data. Thus file
+reading time has no impact on performance when the hardware buffer is refilled.
 
+Buffered play does not use native code, ensuring compatibility with ESP32.
+"""
 # xcs is chip XSS/
 # xdcs is chipXDCS/BSYNC/
 # sdcs is SD card CS/
 class VS1053:
 
-    def __init__(self, spi, reset, dreq, xdcs, xcs, sdcs=None, mp=None):
+    def __init__(self, spi, reset, dreq, xdcs, xcs, sdcs=None, mp=None, buffered=False):
         self._reset = reset
         self._dreq = dreq  # Data request
         self._xdcs = xdcs  # Data CS
@@ -104,6 +109,12 @@ class VS1053:
         self._cancnt = 0  # If >0 cancellation in progress
         self._playing = False
         self._spi.init(baudrate=_DATA_BAUDRATE)
+        if buffered:
+            self._buf = bytearray(_BUF_SIZE)
+            self._mvb = memoryview(self._buf)
+            self.play = self._bplay
+        else:
+            self.play = self._uplay
 
     def _wait_ready(self):
         self._xdcs(1)
@@ -255,7 +266,7 @@ class VS1053:
     def pins(self, data=None):
         if data is not None:
             self._write_ram(_IO_WRITE, data & 0xff)
-        return self._read_ram(_IO_READ) & 0x3ff
+        return self._read_ram(_IO_READ) & 0x3FF
 
     def version(self):
         return (self._read_reg(_SCI_STATUS) >> 4) & 0x0F
@@ -297,8 +308,64 @@ class VS1053:
             while self._cancnt:  # In progress
                 await asyncio.sleep_ms(50)
 
+    async def _bplay(self, s):  # No native decorator for max compatibility
+        self._playing = True
+        self._cancnt = 0
+        dreq = self._dreq
+        mvb = self._mvb  # Memoryview into buffer
+        cnt = 0
+        rptr = 0  # Buffer read pointer
+        bsize = s.readinto(self._buf)  # No. of bytes in buffer
+        wptr = bsize & _BUF_MASK  # write pointer (normally 0)
+        running = True
+        while running:
+            cnt += 1
+            # When running, dreq goes True when on-chip buffer can hold about 640 bytes.
+            # At 128Kbps dreq will be False for 40ms - at higher rates, less. So this code
+            # will block for <= 40ms. The cnt ensures it can't lock the scheduler even
+            # if dreq remains True forever. This is a failing condition where the
+            # chip is consuming data faster than we can feed it.
+            while (not dreq()) or cnt > 30:  # 960 byte backstop
+                if cnt:  # Read once only.
+                    cnt = 0
+                    if wptr > rptr:  # Try to fill to end of buffer
+                        bsize += (n := s.readinto(mvb[wptr: _BUF_SIZE]))
+                        wptr = (wptr + n) & _BUF_MASK
+                    if wptr < rptr:
+                        bsize += (n := s.readinto(mvb[wptr:rptr]))
+                        wptr += n  
+                        # Now wptr == rptr but this can't persist for next outer loop pass
+                await asyncio.sleep_ms(0)  # Don't block while waiting on dreq
+            self._xdcs(0)  # Fast write
+            self._spi.write(mvb[rptr : rptr + 32])
+            self._xdcs(1)
+            rptr = (rptr + 32) & _BUF_MASK  # Bump read pointer modulo _BUF_SIZE
+            bsize -= 32
+            running = bsize > 0
+            # Check for cancelling. Datasheet section 10.5.2
+            if self._cancnt:
+                if self._cancnt == 1:  # Just cancelled
+                    self.mode_set(_SM_CANCEL)
+                if not self.mode() & _SM_CANCEL:  # Cancel done
+                    efb = self._read_ram(_END_FILL_BYTE) & 0xff
+                    for n in range(32):
+                        mvb[n] = efb
+                    for n in range(64):  # send 2048 bytes of end fill byte
+                        self.write(mvb[:32])
+                    self.write(mvb[:4])  # Take to 2052 bytes
+                    if self._read_reg(_SCI_HDAT0) or self._read_reg(_SCI_HDAT1):
+                        raise RuntimeError('Invalid HDAT value.')
+                    break
+                if self._cancnt > 64:  # Cancel has failed
+                    self.soft_reset()
+                    break
+                self._cancnt += 1  # keep feeding data from stream
+        else:
+            await self._end_play(mvb[:32])
+        self._playing = False
+
     @micropython.native
-    async def play(self, s, buf=bytearray(32)):
+    async def _uplay(self, s, buf=bytearray(32)):
         self._playing = True
         self._cancnt = 0
         dreq = self._dreq

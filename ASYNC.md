@@ -3,9 +3,16 @@
 The driver is asynchronous enabling other tasks (such as a GUI interface) to
 run concurrently while playing audio files.
 
-While the driver is cross-platform, testing on ESP8266 and ESP32 failed. It
-works on Pico, Pyboard D, Pyboard 1.x and Pyboard Lite (the latter restricted
-to 128Kbps MP3 files). The synchronous driver works on ESP8266.
+While the driver is cross-platform, testing on ESP8266 failed. It works on
+Pico, Pyboard D, Pyboard 1.x and Pyboard Lite (the latter restricted to 128Kbps
+MP3 files). The synchronous driver works on ESP8266.
+
+## 1.1 ESP32 issue
+
+On ESP32 the `vs1053.py` file requires a minor mod to remove or comment out the
+`micropython.native` decorator on the `.play` method. With this done it will
+play MP3 at up to 256Kbps. I attempted FLAC playback, but this required
+overclocking to 240MHz and, while it worked, the margin was minimal.
 
 # 2. Wiring
 
@@ -88,9 +95,16 @@ This takes the following mandatory args:
  * `xdcs` A `Pin` instance defined as `Pin.OUT` with `value=1`.
  * `xcs` A `Pin` instance defined as `Pin.OUT` with `value=1`.
 
-Optional args - supply only if an SD card is fitted:
- * `sdcs` A `Pin` instance defined as `Pin.OUT` with `value=1`.
- * `mp` A string defining the mount point (e.g. `/fc`).
+Optional args:
+ * `sdcs=None` A `Pin` instance defined as `Pin.OUT` with `value=1`.
+ * `mp=None` A string defining the mount point (e.g. `/fc`).
+ * `buffered=False` Setting this `True` causes the `.play` method to use a 2KiB
+ buffer. This may improve performance; it is necessary on ESP32 as a firmware
+ bug causes the normal `.play` method to fail.
+
+If no SD card is fitted the `sdcs` arg should be `None`. The `mp` arg may still
+be required: it should be the mount point of whatever filesystem is used as a
+data source. Providing this arg enables patches to be installed.
 
 ## 5.2 Asynchronous methods
 
@@ -215,10 +229,9 @@ successfully tested MP3's having a 256Kbps rate and VBR files which have a
 slightly higher rate.
 
 The VS1053 can support lossless FLAC files with a plugin. However the data rate
-for FLAC files is about 1Mbps which would give an overhead of 222ms/s or 22.5%.
-This is the irreducible overhead caused by bus transfers, and takes no account
-of the Python code. FLAC playback proved impossible even on a Pyboard - the
-synchronous driver should be used.
+for FLAC files is about 700Kbps which gives an overhead of 159ms/s or 16%. This
+is the irreducible overhead caused by bus transfers, and takes no account of
+the Python code.
 
 ## 6.2 Test results
 
@@ -252,24 +265,31 @@ MicroPython VM. The VS1053 has a 2KiB buffer. A 128Kbps MP3 has a data rate of
 16KiB/s so the buffer holds 125ms of data. If 256Kbps is used, this drops to
 65ms. Given that `uasyncio` performs round-robin scheduling, this time is the
 maximum allowable sum of the blocking time of all running tasks. If this is
-exceeded the buffer will empty and distorted sound will result.
+exceeded the buffer will empty and sound dropouts will result. Note that FLAC
+playback reduces the buffer to 23ms. This places serious limits on the other
+tasks.
 
-The driver uses the `uasyncio` IOStream mechanism. Currently this supports only
-round-robin scheduling. I am [lobbying](https://github.com/micropython/micropython/issues/5857)
-for an option to prioritise I/O, testing for readiness on every yield to the
-scheduler. If this is implemented it will reduce the constraints on vs1053
-application design.
+The `dreq` signal is asserted when there is sufficient space in the VS1053b
+internal buffer for about 1/3 of its capacity, i.e. about 680 bytes. The driver
+uses the periods when `dreq` is `False` to allow other tasks to be scheduled.
+This ensures that the buffer is nearly full before other tasks are scheduled.
+
+It is worth monitoring `dreq` in a running application: it should regularly
+become `False`. If there are periods where this does not happen, it is likely
+that the buffer is becoming empty and dropouts will be heard. Solutions are
+to reduce blocking in application tasks, to use lower bit rate MP3 files, or
+to use the synchronous driver.
 
 # 7. Plugins
 
 These binary files provide a means of installing enhancements and bug fixes on
 the VS1053. These are stored in RAM so need to be loaded after a power cycle.
-The only plugin I have tested is the FLAC plugin. The asynchronous driver is
-unable to use this successfully.
-
-The current FLAC driver `vs1053b-patches-flac.plg` does not work. An older
-version `flac_plugin.bin` is included which does.
+The only plugin I have tested is the FLAC plugin.
 
 For some reason installing the FLAC plugin takes some 17s on ESP32 while being
 almost instant on a Pyboard. Plugins may be found on the
 [VLSI solutions](http://www.vlsi.fi/en/support/software/vs10xxpatches.html) site.
+The supplied `patch.bin` file enables FLAC decoding and was current at the time
+of writing (Aug 2022) See [main README](./README.md#4-plugins) for details of
+how to process `.plg` files.
+

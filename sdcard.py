@@ -227,7 +227,7 @@ class SDCard:
         self.spi.write(b"\xff")
 
     def readblocks(self, block_num, buf):
-        self.spi.write(b'\xff')  # PGH
+        self.spi.write(b'\xff')  # PGH https://github.com/micropython/micropython/pull/6007
         nblocks = len(buf) // 512
         assert nblocks and not len(buf) % 512, "Buffer length is invalid"
         if nblocks == 1:
