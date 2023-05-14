@@ -5,7 +5,9 @@ done with this [Adafruit breakout](https://www.adafruit.com/product/1381). This
 includes an SD card adaptor which may be used to store MP3 files. MP3 bit rates
 up to 256Kbps and VBR (variable bit rate) files are supported. Adafruit "Music
 Maker" Arduino shields [e.g. this one](https://www.adafruit.com/product/1790)
-have also been used with a MicroPython host running these drivers.
+have also been used with a MicroPython host running these drivers. See
+[this ref](https://github.com/peterhinch/micropython-vs1053/issues/4) for use
+with the Arduino shield.
 
 It should be noted that these drivers run the adaptor board's SD card at a
 higher clock rate than the official SD card driver. If this slot is used, good
